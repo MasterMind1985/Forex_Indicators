@@ -1,0 +1,95 @@
+//@version=5
+indicator(title="Fast Scalp [MasterMind])", shorttitle="Fast Scalp [MasterMind]", overlay = true, max_lines_count=500)
+import PineCoders/Time/4
+
+length = input(30, title = "Support & Resistance length")
+length2 = input(5, title = "Swings Length")
+length3 = input(1, title = "Trigger time Length")
+
+equity = input(6000,title = "Account Balance")
+risk = input(0.5,title = "Risk in PERCENT")
+
+lastHigh = fixnan(ta.pivothigh(length,length))
+lastLow = fixnan(ta.pivotlow(length,length))
+
+lastHigh2 = fixnan(ta.pivothigh(length2,length2))
+lastLow2 = fixnan(ta.pivotlow(length2,length2))
+
+lastHigh3 = fixnan(ta.pivothigh(length3,length3))
+lastLow3 = fixnan(ta.pivotlow(length3,length3))
+
+
+var panel = table.new(position.top_right,2,7,color.yellow,color.black,1,color.black,1)
+
+table.cell(panel,0,0,"SIGNAL")
+table.cell(panel,1,0,"NA")
+table.cell(panel,0,1,"Entry")
+table.cell(panel,1,1,"NA")
+table.cell(panel,0,2,"SL")
+table.cell(panel,1,2,"NA")
+table.cell(panel,0,3,"TP")
+table.cell(panel,1,3,"NA")
+table.cell(panel,0,4,"R:R")
+table.cell(panel,1,4,"NA")
+table.cell(panel,0,5,"SIZE")
+table.cell(panel,1,5,"NA")
+table.cell(panel,0,6,"Distance")
+table.cell(panel,1,6,"NA")
+
+// if close < lastHigh and close > lastLow
+if close < lastLow3
+    entrypoint = lastLow3
+    rr = math.abs(lastLow - entrypoint) / math.abs(lastHigh2 - entrypoint) 
+    riskintrade = equity * risk / 100
+    stopdistance = math.abs(entrypoint - lastHigh2) * 100000
+    sizeintrade = (riskintrade / stopdistance)
+    if rr > 1.75
+        table.cell(panel,1,0,"SELL")
+        table.cell(panel,1,1,str.tostring(entrypoint))
+        table.cell(panel,1,2,str.tostring(lastHigh2))
+        table.cell(panel,1,3,str.tostring(lastLow))
+        table.cell(panel,1,4,str.tostring(rr))
+        table.cell(panel,1,5,str.tostring(sizeintrade))
+        table.cell(panel,1,6,str.tostring(stopdistance))
+
+
+if close > lastHigh3
+    entrypoint = lastHigh3
+    rr = math.abs(lastHigh - entrypoint) / math.abs(entrypoint - lastLow2)
+    riskintrade = equity * risk / 100
+    stopdistance = math.abs(entrypoint - lastLow2) * 100000
+    sizeintrade = (riskintrade / stopdistance)
+    if rr > 1.75
+        table.cell(panel,1,0,"BUY")
+        table.cell(panel,1,1,str.tostring(entrypoint))
+        table.cell(panel,1,2,str.tostring(lastLow2))
+        table.cell(panel,1,3,str.tostring(lastHigh))
+        table.cell(panel,1,4,str.tostring(rr))
+        table.cell(panel,1,5,str.tostring(sizeintrade))
+        table.cell(panel,1,6,str.tostring(stopdistance))
+
+
+// Default color constants using tranparency of 25.
+askz   = #f1c40f50
+lokz = #e74c3c50
+nykz   = #27ae6050
+locl = #2980b950
+NO_COLOR     = color(na)
+
+// Function returns `true` when the bar's time is
+timeInRange(tf, session) =>
+    time(tf, session,"America/New_York") != 0
+
+var chartIsIntraday = timeframe.isseconds or (timeframe.isintraday)
+sessionColor = if chartIsIntraday
+    switch
+        timeInRange(timeframe.period, "2000-0000") => askz
+        timeInRange(timeframe.period, "0200-0500") => lokz
+        timeInRange(timeframe.period, "0700-1000") => nykz
+        timeInRange(timeframe.period, "1000-1200") => locl
+        => NO_COLOR
+else
+//    f_print("No background is displayed.\nChart timeframe must be <= 30min.")
+    NO_COLOR
+
+bgcolor(sessionColor)
