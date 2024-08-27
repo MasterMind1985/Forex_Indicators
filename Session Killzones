@@ -1,0 +1,91 @@
+//@version=5
+indicator("sessions killzone{MasterMind}", overlay = true)
+// Default color constants using tranparency of 25.
+askz   = #f1c40f50
+lokz = #e74c3c50
+nykz   = #27ae6050
+locl = #2980b950
+NO_COLOR     = color(na)
+
+// Function returns `true` when the bar's time is
+timeInRange(tf, session) =>
+    time(tf, session,"America/New_York") != 0
+
+var chartIsIntraday = timeframe.isseconds or (timeframe.isintraday)
+sessionColor = if chartIsIntraday
+    switch
+        timeInRange(timeframe.period, "2000-0000") => askz
+        timeInRange(timeframe.period, "0200-0500") => lokz
+        timeInRange(timeframe.period, "0700-1000") => nykz
+        timeInRange(timeframe.period, "1000-1200") => locl
+        => NO_COLOR
+else
+//    f_print("No background is displayed.\nChart timeframe must be <= 30min.")
+    NO_COLOR
+
+bgcolor(sessionColor)
+
+var g1              = 'Daily Levels'
+showDaily           = input.bool(true, 'Show Daily Levels', group = g1)
+dayOpenCol          = input.color(color.orange, 'Daily Open Color', inline = '1', group = g1)
+dayOpenStyle        = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '1', group = g1)
+dayHighCol          = input.color(color.red, 'Daily High Color', inline = '2', group = g1)
+dayHighStyle        = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '2', group = g1)
+dayLowCol           = input.color(color.lime, 'Daily Low Color', inline = '3', group = g1)
+dayLowStyle         = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '3', group = g1)
+
+showPrevDay         = input.bool(true, 'Show Previous Days Levels', group = g1)
+prevDayOpenCol      = input.color(color.orange, 'Previous Days Open Color', inline = '4', group = g1)
+prevDayOpenStyle    = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '4', group = g1)
+prevDayHighCol      = input.color(color.red, 'Previous Days High Color', inline = '5', group = g1)
+prevDayHighStyle    = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '5', group = g1)
+prevDayLowCol       = input.color(color.lime, 'Previous Days Low Color', inline = '6', group = g1)
+prevDayLowStyle     = input.string('Solid', '', options = ['Solid', 'Dashed', 'Dotted'], inline = '6', group = g1)
+
+extendLines         = input.bool(false, 'Extend Lines', group = g1)
+
+//methods switches and functions
+extended = switch extendLines
+    true => extend.right
+    false => extend.none
+
+method styler(string this) =>
+    switch this
+        'Solid' => line.style_solid
+        'Dashed' => line.style_dashed
+        'Dotted' => line.style_dotted
+       
+getHTF(htf,x,idx,oCol,oStyle,hCol,hStyle,lCol,lStyle,oStr,hStr,lStr) =>
+    [o,h,l] = request.security(syminfo.tickerid, htf, [open[x], high[x], low[x]])
+    //line.new(idx,o,chart.right_visible_bar_time,o,xloc=xloc.bar_time,extend=extended,color=oCol,style=oStyle.styler())
+    line.new(idx,h,chart.right_visible_bar_time,h,xloc=xloc.bar_time,extend=extended,color=hCol,style=hStyle.styler())
+    line.new(idx,l,chart.right_visible_bar_time,l,xloc=xloc.bar_time,extend=extended,color=lCol,style=lStyle.styler())
+    //label.new(bar_index+5,o,oStr,style=label.style_none,textcolor=oCol)
+    label.new(bar_index+5,h,hStr,style=label.style_none,textcolor=hCol)
+    label.new(bar_index+5,l,lStr,style=label.style_none,textcolor=lCol)
+
+// index variables
+var dayIndex        = 0 
+var prevDayIndex    = 0 
+
+// new times
+newDay      = ta.change(time('D'))
+
+// set the starting points for lines
+if newDay
+    prevDayIndex := dayIndex
+    dayIndex := time
+
+//delete previous lines
+lines = line.all
+for li in lines
+    li.delete()
+labels = label.all
+for la in labels
+    la.delete()
+
+//run the code
+if showDaily
+    getHTF('D',0,dayIndex,dayOpenCol,dayOpenStyle,dayHighCol,dayHighStyle,dayLowCol,dayLowStyle,'Open','High','Low')
+if showPrevDay
+    getHTF('D',1,prevDayIndex,prevDayOpenCol,prevDayOpenStyle,prevDayHighCol,prevDayHighStyle,prevDayLowCol,prevDayLowStyle,'PDO','PDH','PDL')
