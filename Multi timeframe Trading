@@ -1,0 +1,139 @@
+//@version=5
+indicator(title="Price Action Structure [MasterMind])", shorttitle="Price Action Structure [MasterMind]", overlay = true, max_lines_count=500)
+import PineCoders/Time/4
+
+length = input(16, title = "Support & Resistance length")
+length2 = input(4, title = "Swings Length")
+
+h = ta.highest(high, length * 2 + 1)
+l = ta.lowest(low, length * 2 + 1)
+
+h2 = ta.highest(high, length2 * 2 + 1)
+l2 = ta.lowest(low, length2 * 2 + 1)
+
+f_isMin(len, l, h) =>
+    l == low[len]
+f_isMax(len, l, h) =>
+    h == high[len]
+
+var dirUp = false
+var lastLow = high * 100
+var lastHigh = 0.0
+var timeLow = bar_index
+var timeHigh = bar_index
+var line lSupport = na
+var line lResistance = na
+f_drawLine(x1,y1,x2,y2,lcolor) =>
+    line.new(x1, y1,x2 ,y2 ,xloc.bar_index, extend=extend.none , color=lcolor, style= line.style_solid, width=2)
+
+if dirUp
+    if (f_isMin(length, l, h) and low[length] < lastLow)
+        lastLow := low[length]
+        timeLow := bar_index
+        line.delete(lSupport)
+        lSupport := f_drawLine(timeLow - length,lastLow, bar_index, lastLow,color.green)
+ 
+    if (f_isMax(length, l, h) and high[length] > lastLow)
+        lastHigh := high[length]
+        timeHigh := bar_index
+        dirUp := false
+        lResistance := f_drawLine(timeHigh - length,lastHigh, bar_index, lastHigh,color.red) 
+if not dirUp
+    if (f_isMax(length, l, h) and high[length] > lastHigh)
+        lastHigh := high[length]
+        timeHigh := bar_index
+        line.delete(lResistance)
+        lResistance := f_drawLine(timeHigh - length,lastHigh, bar_index, lastHigh,color.red) 
+    if f_isMin(length, l, h) and low[length] < lastHigh
+        lastLow := low[length]
+        timeLow := bar_index
+        dirUp := true
+        lSupport := f_drawLine(timeLow - length,lastLow, bar_index, lastLow,color.green) 
+        if (f_isMax(length, l, h) and high[length] > lastLow)
+            lastHigh := high[length]
+            timeHigh := bar_index
+            dirUp := false
+            lResistance := f_drawLine(timeHigh - length,lastHigh, bar_index, lastHigh,color.red) 
+
+// Second line
+var dirUp2 = false
+var lastLow2 = high * 100
+var lastHigh2 = 0.0
+var timeLow2 = bar_index
+var timeHigh2 = bar_index
+var line li2 = na
+f_drawLine2() =>
+    line.new(
+         timeHigh2 - length2, lastHigh2,
+         timeLow2 - length2, lastLow2,
+         xloc.bar_index, color=color.yellow, width=1
+         )
+
+if dirUp2
+    if (f_isMin(length2, l2, h2) and low[length2] < lastLow2)
+        lastLow2 := low[length2]
+        timeLow2 := bar_index
+        line.delete(li2)
+        li2 := f_drawLine2()
+
+    if (f_isMax(length2, l2, h2) and high[length2] > lastLow2)
+        lastHigh2 := high[length2]
+        timeHigh2 := bar_index
+        dirUp2 := false
+        li2 := f_drawLine2()
+
+if not dirUp2
+    if (f_isMax(length2, l2, h2) and high[length2] > lastHigh2)
+        lastHigh2 := high[length2]
+        timeHigh2 := bar_index
+        line.delete(li2)
+        li2 := f_drawLine2()
+    if f_isMin(length2, l2, h2) and low[length2] < lastHigh2
+        lastLow2 := low[length2]
+        timeLow2 := bar_index
+        dirUp2 := true
+        li2 := f_drawLine2()
+        if (f_isMax(length2, l2, h2) and high[length2] > lastLow2)
+            lastHigh2 := high[length2]
+            timeHigh2 := bar_index
+            dirUp2 := false
+            li2 := f_drawLine2()
+
+showBarcolor = input(true, title="Color breakout", group="breakout", tooltip="This will color candles that crossover/under last Support and Resistance levels")
+showMnB = input(true,title="Color Momentum candles", group = "breakout",tooltip = "This will repaint momentum and base candles")
+ 
+isCrossed = (ta.crossover(close, lastHigh)) or (ta.crossunder(close,lastLow)) 
+ 
+tripleMColor = isCrossed ? color.yellow : na
+  
+barcolor(showBarcolor ? tripleMColor : na)
+ 
+
+bullM = close > open and ((high - close) + (open - low)) < (close - open)
+bearM = close < open and ((close - low) + (high - open) < (open - close))
+barcolor(showMnB ? (bullM ? color.green : bearM ? color.red : na) : na)
+
+// Default color constants using tranparency of 25.
+askz   = #f1c40f50
+lokz = #e74c3c50
+nykz   = #27ae6050
+locl = #2980b950
+NO_COLOR     = color(na)
+
+// Function returns `true` when the bar's time is
+timeInRange(tf, session) =>
+    time(tf, session,"America/New_York") != 0
+
+var chartIsIntraday = timeframe.isseconds or (timeframe.isintraday)
+sessionColor = if chartIsIntraday
+    switch
+        timeInRange(timeframe.period, "2000-0000") => askz
+        timeInRange(timeframe.period, "0200-0500") => lokz
+        timeInRange(timeframe.period, "0700-1000") => nykz
+        timeInRange(timeframe.period, "1000-1200") => locl
+        => NO_COLOR
+else
+//    f_print("No background is displayed.\nChart timeframe must be <= 30min.")
+    NO_COLOR
+
+bgcolor(sessionColor)
